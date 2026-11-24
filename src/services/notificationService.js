@@ -1,8 +1,6 @@
-
 import { supabase } from "../supabase";
 
-// Get current user's notifications
-
+// Get the current user's most recent notifications.
 export async function getNotifications(userId) {
   const { data, error } = await supabase
     .from("notifications")
@@ -18,15 +16,13 @@ export async function getNotifications(userId) {
       details: error.details,
       hint: error.hint,
     });
-
     throw error;
   }
 
-  console.log("Notifications loaded:", data);
   return data || [];
 }
 
-// Mark one notification as read
+// Mark one notification as read.
 export async function markAsRead(id) {
   const { error } = await supabase
     .from("notifications")
@@ -36,7 +32,7 @@ export async function markAsRead(id) {
   if (error) throw error;
 }
 
-// Mark all as read
+// Mark all unread notifications for this user as read.
 export async function markAllAsRead(userId) {
   const { error } = await supabase
     .from("notifications")
@@ -47,8 +43,9 @@ export async function markAllAsRead(userId) {
   if (error) throw error;
 }
 
-// Listen for incoming notifications
-export function subscribeNotifications(userId, callback) {
+// Listen for this user's notification inserts. The row-level table policy
+// remains responsible for deciding which rows this authenticated user can read.
+export function subscribeNotifications(userId, callback, onStatus) {
   const channel = supabase
     .channel(`notifications-${userId}`, { config: { private: true } })
     .on(
@@ -59,9 +56,14 @@ export function subscribeNotifications(userId, callback) {
         table: "notifications",
         filter: `user_id=eq.${userId}`,
       },
-      (payload) => callback(payload.new)
+      payload => callback(payload.new)
     )
-    .subscribe();
+    .subscribe((status, error) => {
+      if (typeof onStatus === "function") onStatus(status, error);
+      if (error) console.error("Notification channel error:", error);
+    });
 
-  return () => supabase.removeChannel(channel);
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }
