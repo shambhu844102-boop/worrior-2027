@@ -367,35 +367,6 @@ begin
 end;
 $$;
 
-create or replace function public.get_gamification_leaderboard()
-returns table (
-  user_id uuid,
-  full_name text,
-  total_xp integer,
-  current_streak integer,
-  longest_streak integer,
-  total_focus_minutes integer,
-  level integer
-)
-language sql
-stable
-security definer
-set search_path = ''
-as $$
-  select p.id,
-         p.full_name,
-         coalesce(g.total_xp, 0),
-         case when g.last_study_date >= (now() at time zone 'Asia/Kolkata')::date - 1 then coalesce(g.current_streak, 0) else 0 end,
-         coalesce(g.longest_streak, 0),
-         coalesce(g.total_focus_minutes, 0),
-         floor(coalesce(g.total_xp, 0) / 500.0)::integer + 1
-    from public.profiles p
-    left join public.user_gamification g on g.user_id = p.id
-   where auth.uid() is not null
-   order by coalesce(g.total_xp, 0) desc, p.full_name asc;
-$$;
-
-
 create or replace function public.get_weekly_leaderboard()
 returns table (
   user_id uuid,
@@ -436,7 +407,6 @@ revoke all on function public.pause_study_session(uuid) from public, anon;
 revoke all on function public.resume_study_session(uuid) from public, anon;
 revoke all on function public.abandon_study_session(uuid) from public, anon;
 revoke all on function public.complete_study_session(uuid) from public, anon;
-revoke all on function public.get_gamification_leaderboard() from public, anon;
 revoke all on function public.get_gamification_dashboard() from public, anon;
 revoke all on function public.get_weekly_leaderboard() from public, anon;
 grant execute on function public.start_study_session(integer) to authenticated;
@@ -444,6 +414,5 @@ grant execute on function public.pause_study_session(uuid) to authenticated;
 grant execute on function public.resume_study_session(uuid) to authenticated;
 grant execute on function public.abandon_study_session(uuid) to authenticated;
 grant execute on function public.complete_study_session(uuid) to authenticated;
-grant execute on function public.get_gamification_leaderboard() to authenticated;
 grant execute on function public.get_gamification_dashboard() to authenticated;
 grant execute on function public.get_weekly_leaderboard() to authenticated;
