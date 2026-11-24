@@ -1,7 +1,7 @@
 -- WORRIOR 2027 gamification upgrade
--- This migration is intentionally NOT applied automatically.
--- Apply only after the project owner reviews and approves it.
--- Existing profiles, auth users, and existing study data are not modified.
+-- Reviewed additive migration for verified study XP, streaks, missions, and rewards.
+-- Run once against the WORRIOR-2027 Supabase project.
+-- Existing profiles, auth users, and existing content records are not modified or deleted.
 
 create table if not exists public.user_gamification (
   user_id uuid primary key references public.profiles(id) on delete cascade,
