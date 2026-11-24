@@ -55,18 +55,8 @@ on conflict (id) do nothing;
 alter table public.achievements enable row level security;
 alter table public.user_achievements enable row level security;
 
-drop policy if exists "Members can view achievement catalogue" on public.achievements;
-create policy "Members can view achievement catalogue"
-  on public.achievements for select to authenticated using (true);
-
-drop policy if exists "Members can view own unlocked achievements" on public.user_achievements;
-create policy "Members can view own unlocked achievements"
-  on public.user_achievements for select to authenticated using (auth.uid() = user_id);
-
-revoke all on public.achievements from anon, authenticated;
-grant select on public.achievements to authenticated;
-revoke all on public.user_achievements from anon, authenticated;
-grant select on public.user_achievements to authenticated;
+-- These tables are not granted to browser roles; authenticated RPCs below
+-- expose only the progress data required by the application.
 
 
 create index if not exists study_sessions_user_completed_idx
@@ -85,23 +75,23 @@ alter table public.user_gamification enable row level security;
 alter table public.study_sessions enable row level security;
 
 drop policy if exists "Members can view gamification totals" on public.user_gamification;
-create policy "Members can view gamification totals"
-  on public.user_gamification for select to authenticated using (true);
+create policy "Members can view own gamification totals"
+  on public.user_gamification for select to authenticated using ((select auth.uid()) = user_id);
 
 drop policy if exists "Members can view own study sessions" on public.study_sessions;
 create policy "Members can view own study sessions"
   on public.study_sessions for select to authenticated using (auth.uid() = user_id);
 
 revoke all on public.user_gamification from anon, authenticated;
-grant select on public.user_gamification to authenticated;
 revoke all on public.study_sessions from anon, authenticated;
-grant select on public.study_sessions to authenticated;
+revoke all on public.achievements from anon, authenticated;
+revoke all on public.user_achievements from anon, authenticated;
 
 create or replace function public.start_study_session(p_duration_minutes integer)
 returns uuid
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   v_user uuid := auth.uid();
@@ -128,7 +118,7 @@ create or replace function public.pause_study_session(p_session_id uuid)
 returns boolean
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare v_user uuid := auth.uid();
 begin
@@ -145,7 +135,7 @@ create or replace function public.resume_study_session(p_session_id uuid)
 returns boolean
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare v_user uuid := auth.uid();
 begin
@@ -163,7 +153,7 @@ create or replace function public.abandon_study_session(p_session_id uuid)
 returns boolean
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare v_user uuid := auth.uid();
 begin
@@ -179,7 +169,7 @@ create or replace function public.complete_study_session(p_session_id uuid)
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   v_user uuid := auth.uid();
@@ -305,7 +295,7 @@ returns jsonb
 language plpgsql
 stable
 security definer
-set search_path = public
+set search_path = ''
 as $
 declare
   v_user uuid := auth.uid();
@@ -342,13 +332,19 @@ begin
      and (created_at at time zone 'Asia/Kolkata')::date = v_today;
 
   select coalesce(jsonb_agg(jsonb_build_object(
-      'id', a.id, 'title', a.title, 'description', a.description,
-      'icon', a.icon, 'unlocked_at', ua.unlocked_at
-    ) order by ua.unlocked_at desc), '[]'::jsonb)
+      'id', a.id,
+      'title', a.title,
+      'description', a.description,
+      'icon', a.icon,
+      'rule_key', a.rule_key,
+      'threshold', a.threshold,
+      'unlocked', ua.unlocked_at is not null,
+      'unlocked_at', ua.unlocked_at
+    ) order by a.threshold, a.title), '[]'::jsonb)
     into v_badges
-    from public.user_achievements ua
-    join public.achievements a on a.id = ua.achievement_id
-   where ua.user_id = v_user;
+    from public.achievements a
+    left join public.user_achievements ua
+      on ua.achievement_id = a.id and ua.user_id = v_user;
 
   return jsonb_build_object(
     'total_xp', v_total_xp,
@@ -384,7 +380,7 @@ returns table (
 language sql
 stable
 security definer
-set search_path = public
+set search_path = ''
 as $$
   select p.id,
          p.full_name,
@@ -395,6 +391,7 @@ as $$
          floor(coalesce(g.total_xp, 0) / 500.0)::integer + 1
     from public.profiles p
     left join public.user_gamification g on g.user_id = p.id
+   where auth.uid() is not null
    order by coalesce(g.total_xp, 0) desc, p.full_name asc;
 $$;
 
@@ -410,7 +407,7 @@ returns table (
 language sql
 stable
 security definer
-set search_path = public
+set search_path = ''
 as $
   with weekly as (
     select ss.user_id,
@@ -430,6 +427,7 @@ as $
     from public.profiles p
     left join weekly w on w.user_id = p.id
     left join public.user_gamification g on g.user_id = p.id
+   where auth.uid() is not null
    order by coalesce(w.weekly_xp, 0) desc, coalesce(w.weekly_focus_minutes, 0) desc, p.full_name asc;
 $;
 
