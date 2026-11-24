@@ -1,5 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
-
 :root {
     font-family: 'DM Sans', sans-serif;
     color: #e9ebf2;
@@ -10,7 +9,7 @@
     --panel: #191c24;
     --panel2: #20242e;
     --line: #2b303c;
-    --muted: #9299aa;
+    --muted: #2b4c99;
     --purple: #8b7cff;
     --purple2: #6e5cf4;
     --green: #4bd39a
@@ -1693,3 +1692,4 @@ textarea {
   border-radius: 50%;
   flex-shrink: 0;
 }
+  

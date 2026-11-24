@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { supabase, supabaseReady } from "./supabase";
 import StudyTimer from "./StudyTimer";
+import NotificationBell from "./components/NotificationBell";
 
 const nav = [
   ["Overview", Home], ["Messages", MessageCircle], ["Live room", Video],
@@ -84,7 +85,17 @@ export default function App() {
       <header className="topbar">
         <button className="icon-btn mobile-menu" onClick={() => setMobileNav(true)}><Menu /></button>
         <div className="crumb">WORRIOR 2027 <ChevronRight size={14} /> <b>{page}</b></div>
-        <div className="top-actions"><span className="secure-label"><ShieldCheck size={15} /> Private group</span><div className="avatar small">{initials(profile.full_name)}</div></div>
+        <div className="top-actions">
+          <NotificationBell user={session.user} />
+
+          <span className="secure-label">
+            <ShieldCheck size={15} /> Private group
+          </span>
+
+          <div className="avatar small">
+            {initials(profile.full_name)}
+          </div>
+        </div>
       </header>
       <div className="page-wrap">
         {page === "Overview" && <Overview profile={profile} setPage={setPage} />}
