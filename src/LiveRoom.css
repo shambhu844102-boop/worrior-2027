@@ -1,0 +1,56 @@
+.live-room-page { display: grid; gap: 16px; }
+.live-room-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.live-room-heading h1 { margin: 0 0 7px; color: #eef3ff; font-size: 29px; letter-spacing: -.8px; }
+.live-room-heading .muted { margin: 0; max-width: 650px; }
+.live-room-live-pill { display: inline-flex; align-items: center; gap: 8px; flex: none; padding: 8px 11px; border: 1px solid rgba(135,157,196,.2); border-radius: 30px; color: #a6b4cc; font-size: 10px; font-weight: 800; letter-spacing: .8px; }
+.live-room-live-pill span, .live-room-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #8492a8; }
+.live-room-live-pill.active span, .live-room-status-dot { background: #4bd39a; box-shadow: 0 0 0 4px rgba(75,211,154,.11); }
+.live-room-info { display: flex; align-items: center; gap: 13px; padding: 15px 17px; }
+.live-room-info-icon, .live-room-lobby-icon { width: 44px; height: 44px; display: grid; place-items: center; flex: none; border-radius: 13px; color: #9db7ff; background: rgba(104,136,226,.14); }
+.live-room-info-copy { min-width: 0; }
+.live-room-info strong { color: #eaf0fc; font-size: 13px; }
+.live-room-info p { color: #91a2bd; font-size: 11px; margin: 4px 0 0; line-height: 1.5; }
+.live-room-count { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; color: #aab9d1; white-space: nowrap; font-size: 11px; }
+.live-room-alert { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(239,123,123,.3); background: rgba(239,123,123,.08); color: #ffb9b9; font-size: 12px; }
+.live-room-notice { margin: 0; color: #e8c47e; font-size: 12px; }
+.live-room-status { display: flex; align-items: center; gap: 10px; padding: 12px 15px; color: #aab9d1; font-size: 12px; }
+.live-room-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.live-room-tile { position: relative; min-height: 245px; aspect-ratio: 16 / 9; overflow: hidden; display: grid; place-items: center; border: 1px solid rgba(135,157,196,.2); border-radius: 16px; background: radial-gradient(circle at 50% 15%, rgba(89,114,172,.22), transparent 45%), #101a2c; }
+.live-room-video { width: 100%; height: 100%; display: block; object-fit: cover; background: #101a2c; }
+.live-room-video.audio-only { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.live-room-avatar { position: absolute; width: 76px; height: 76px; display: grid; place-items: center; border-radius: 50%; color: #eaf0ff; font-size: 23px; font-weight: 800; background: linear-gradient(140deg, #486cba, #785bb8); box-shadow: 0 12px 35px rgba(0,0,0,.24); }
+.live-room-tile-caption { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 20px 13px 11px; color: #fff; font-size: 12px; font-weight: 700; background: linear-gradient(transparent, rgba(0,0,0,.72)); }
+.live-room-tile-caption small { color: rgba(255,255,255,.72); font-size: 10px; font-weight: 500; }
+.live-room-waiting { min-height: 245px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; padding: 20px; text-align: center; border: 1px dashed rgba(135,157,196,.25); border-radius: 16px; background: rgba(90,122,190,.04); }
+.live-room-waiting > div { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 50%; background: rgba(104,136,226,.13); color: #a8bcff; }
+.live-room-waiting strong { color: #eaf0fc; font-size: 13px; }
+.live-room-waiting p { max-width: 290px; color: #91a2bd; font-size: 11px; line-height: 1.5; margin: 0; }
+.live-room-controls { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; padding: 14px; }
+.live-room-lobby { min-height: 320px; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; padding: 30px 20px; }
+.live-room-lobby-icon { width: 70px; height: 70px; border-radius: 20px; margin-bottom: 12px; }
+.live-room-lobby h2 { color: #eef3ff; margin: 4px 0 8px; font-size: 22px; }
+.live-room-lobby p { max-width: 560px; color: #91a2bd; font-size: 12px; line-height: 1.65; margin: 0 0 18px; }
+.live-room-join { min-width: 190px; justify-content: center; }
+.live-room-lobby small { margin-top: 13px; color: #8293ae; font-size: 10px; }
+.live-room-footnote { color: #7f91ad; font-size: 10px; line-height: 1.5; margin: 0; }
+.live-room-spinner { animation: live-room-spin 1s linear infinite; }
+@keyframes live-room-spin { to { transform: rotate(360deg); } }
+html[data-theme="light"] .live-room-heading h1, html[data-theme="light"] .live-room-info strong, html[data-theme="light"] .live-room-waiting strong, html[data-theme="light"] .live-room-lobby h2 { color: #20314d; }
+html[data-theme="light"] .live-room-live-pill { color: #667895; border-color: #e0e7f2; }
+html[data-theme="light"] .live-room-info p, html[data-theme="light"] .live-room-status, html[data-theme="light"] .live-room-waiting p, html[data-theme="light"] .live-room-lobby p, html[data-theme="light"] .live-room-lobby small, html[data-theme="light"] .live-room-footnote { color: #71819a; }
+html[data-theme="light"] .live-room-info-icon, html[data-theme="light"] .live-room-lobby-icon { background: #edf2ff; color: #4e6db5; }
+html[data-theme="light"] .live-room-info .live-room-count { color: #607494; }
+html[data-theme="light"] .live-room-status { background: #fff; }
+html[data-theme="light"] .live-room-waiting { border-color: #dfe6f1; background: #f7f9fd; }
+html[data-theme="light"] .live-room-waiting > div { background: #edf2ff; color: #4e6db5; }
+html[data-theme="light"] .live-room-tile { border-color: #273c5b; }
+@media (max-width: 760px) {
+  .live-room-heading { flex-direction: column; }
+  .live-room-heading h1 { font-size: 24px; }
+  .live-room-info { align-items: flex-start; flex-wrap: wrap; }
+  .live-room-count { margin-left: 56px; }
+  .live-room-grid { grid-template-columns: 1fr; gap: 10px; }
+  .live-room-tile, .live-room-waiting { min-height: 220px; }
+  .live-room-controls { display: grid; grid-template-columns: 1fr; }
+  .live-room-controls .btn { width: 100%; justify-content: center; }
+}
