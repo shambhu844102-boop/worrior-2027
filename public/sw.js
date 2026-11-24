@@ -1,4 +1,3 @@
-
 self.addEventListener("push", event => {
   let data = {};
 
@@ -16,8 +15,8 @@ self.addEventListener("push", event => {
       data.title || "WORRIOR 2027",
       {
         body: data.body || "New update",
-        icon: "/favicon.ico",
-        badge: "/favicon.ico",
+        icon: "/logo.png",
+        badge: "/logo.png",
         data: {
           url: data.url || "/"
         }
