@@ -16,6 +16,11 @@ const nav = [
   ["Study Timer", Clock], ["Members", Users], ["Schedule", CalendarDays],["Announcements", Megaphone],
 ];
 
+const mobileNavItems = [
+  ["Overview", Home], ["Messages", MessageCircle], ["Live room", Video],
+  ["Study Timer", Clock], ["Members", Users],
+];
+
 function initials(s = "Student") {
   return s.split(" ").map(x => x[0]).join("").slice(0, 2).toUpperCase();
 }
@@ -70,7 +75,7 @@ export default function App() {
 
   if (!supabaseReady) return <SetupScreen />;
   if (loading) return <div className="loading"><div className="brand-mark">W</div><p>Loading WORRIOR 2027…</p></div>;
-  if (!session) return <Login email={email} setEmail={setEmail} password={password} setPassword={setPassword} onSubmit={signIn} notice={notice} />;
+  if (!session) return <Login email={email} setEmail={setEmail} password={password} setPassword={setPassword} onSubmit={signIn} notice={notice} theme={theme} onToggleTheme={() => setTheme(current => current === "dark" ? "light" : "dark")} />;
   if (!profile) return <div className="loading"><p>Account found, but member profile is missing. Ask your admin to check the database setup.</p><button className="btn secondary" onClick={signOut}>Sign out</button></div>;
 
   return <div className="app-shell">
@@ -118,6 +123,13 @@ export default function App() {
         {page === "Schedule" && <Schedule profile={profile} />}
         {page === "Settings" && <AdminPanel profile={profile} />}
       </div>
+      <nav className="mobile-bottom-nav" aria-label="Quick navigation">
+        {mobileNavItems.map(([name, Icon]) => (
+          <button key={name} type="button" className={page === name ? "active" : ""} aria-current={page === name ? "page" : undefined} onClick={() => setPage(name)}>
+            <Icon size={18} /><span>{name === "Overview" ? "Home" : name === "Study Timer" ? "Focus" : name === "Live room" ? "Live" : name}</span>
+          </button>
+        ))}
+      </nav>
     </main>
   </div>;
 }
@@ -125,8 +137,9 @@ export default function App() {
 function SetupScreen() {
   return <div className="center-screen"><div className="login-card"><div className="brand-mark large">W</div><p className="eyebrow">PROJECT SETUP</p><h1>Connect your Supabase project</h1><p className="muted">Copy <code>.env.example</code> to <code>.env</code>, add your Supabase project URL and anon key, then restart the development server.</p><div className="setup-steps"><span>1. Create a Supabase project</span><span>2. Run <code>supabase/schema.sql</code></span><span>3. Configure environment variables</span><span>4. Start with <code>npm run dev</code></span></div></div></div>;
 }
-function Login({ email, setEmail, password, setPassword, onSubmit, notice }) {
-  return <div className="login-screen"><div className="login-visual"><div className="login-orbit orbit-one" /><div className="login-orbit orbit-two" /><div className="hero-brand"><div className="brand-mark large">W</div><span>WORRIOR <em>2027</em></span></div><div className="hero-copy"><p className="eyebrow">YOUR PRIVATE STUDY CAMPUS</p><h1>Learn together.<br /><span>Rise together.</span></h1><p>A focused space for six students to teach, collaborate and prepare for success.</p></div><div className="hero-footer">STUDY · SHARE · SUCCEED</div></div><div className="login-panel"><form className="login-card" onSubmit={onSubmit}><p className="eyebrow">MEMBER ACCESS</p><h2>Welcome back</h2><p className="muted">Sign in with the account created by your group admin.</p><label>Email address</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" /><label>Password</label><input type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Your password" /><button className="btn primary full">Sign in <ChevronRight size={17} /></button>{notice && <p className="notice">{notice}</p>}<p className="login-foot"><LockKeyhole size={13} /> Private access · Invite-only members</p></form></div></div>;
+function Login({ email, setEmail, password, setPassword, onSubmit, notice, theme, onToggleTheme }) {
+  return <div className="login-screen">
+    <div className="login-theme-control"><ThemeToggle theme={theme} onToggle={onToggleTheme} /></div><div className="login-visual"><div className="login-orbit orbit-one" /><div className="login-orbit orbit-two" /><div className="hero-brand"><div className="brand-mark large">W</div><span>WORRIOR <em>2027</em></span></div><div className="hero-copy"><p className="eyebrow">YOUR PRIVATE STUDY CAMPUS</p><h1>Learn together.<br /><span>Rise together.</span></h1><p>A focused space for six students to teach, collaborate and prepare for success.</p></div><div className="hero-footer">STUDY · SHARE · SUCCEED</div></div><div className="login-panel"><form className="login-card" onSubmit={onSubmit}><p className="eyebrow">MEMBER ACCESS</p><h2>Welcome back</h2><p className="muted">Sign in with the account created by your group admin.</p><label>Email address</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" /><label>Password</label><input type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Your password" /><button className="btn primary full">Sign in <ChevronRight size={17} /></button>{notice && <p className="notice">{notice}</p>}<p className="login-foot"><LockKeyhole size={13} /> Private access · Invite-only members</p></form></div></div>;
 }
 
 function PageHeading({ eyebrow, title, description, action }) {
@@ -188,8 +201,47 @@ function Overview({ profile, setPage }) {
       </div>
     </div>
 
+    <DailyIntentions profile={profile} setPage={setPage} />
     <div className="content-grid"><section className="panel"><div className="panel-head"><div><h3>Recent conversations</h3><p className="muted">Latest updates from your group</p></div><button className="text-btn" onClick={() => setPage("Messages")}>View chat <ChevronRight size={14} /></button></div>{recent.length ? recent.map(x => <div className="recent-row" key={x.id}><div className="avatar">{initials(x.profiles?.full_name)}</div><div className="recent-copy"><b>{x.profiles?.full_name || "Member"}</b><p>{x.content}</p></div><small>{prettyDate(x.created_at)}</small></div>) : <Empty text="No messages yet. Start the conversation with your team." />}</section><section className="panel quick-panel"><div className="panel-head"><div><h3>Quick access</h3><p className="muted">Jump back into your work</p></div></div>{[["Messages", MessageCircle, "Discuss a topic"], ["Study materials", FolderOpen, "Find shared notes"], ["Assignments", CheckSquare, "Check group tasks"], ["Members", Users, "Meet your teammates"]].map(([n, I, d]) => <button className="quick-link" key={n} onClick={() => setPage(n)}><span className="quick-icon"><I size={18} /></span><span><b>{n}</b><small>{d}</small></span><ChevronRight size={16} /></button>)}</section></div>
   </>;
+}
+function DailyIntentions({ profile, setPage }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const storageKey = "worrior-intentions-" + profile.id + "-" + today;
+  const intentions = [
+    { id: "focus", title: "Complete one focused study session", detail: "Start your focus timer", page: "Study Timer", icon: Clock },
+    { id: "review", title: "Review a shared learning resource", detail: "Open your study materials", page: "Study materials", icon: BookOpen },
+    { id: "connect", title: "Contribute to the study group", detail: "Ask, answer or encourage", page: "Messages", icon: MessageCircle },
+  ];
+  const [completed, setCompleted] = useState(() => {
+    try { const saved = JSON.parse(window.localStorage.getItem(storageKey) || "[]"); return Array.isArray(saved) ? saved : []; }
+    catch { return []; }
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem(storageKey, JSON.stringify(completed)); } catch { /* local progress is optional */ }
+  }, [storageKey, completed]);
+  const progress = Math.round((completed.length / intentions.length) * 100);
+  return (
+    <section className="daily-intentions panel" aria-labelledby="daily-intentions-title">
+      <div className="daily-intentions-head"><div><p className="eyebrow">YOUR DAILY RHYTHM</p><h3 id="daily-intentions-title">Small steps. Real momentum.</h3><p className="muted">Choose three simple intentions for today.</p></div>
+        <div className="intent-progress" aria-label={completed.length + " of 3 intentions completed"}><strong>{completed.length}/3</strong><small>completed</small></div>
+      </div>
+      <div className="intent-progress-track"><span style={{ width: progress + "%" }} /></div>
+      <div className="intentions-list">
+        {intentions.map(item => {
+          const Icon = item.icon;
+          const checked = completed.includes(item.id);
+          return <div className={"intention-row " + (checked ? "done" : "")} key={item.id}>
+            <button className="intention-check" type="button" aria-pressed={checked} aria-label={(checked ? "Undo: " : "Complete: ") + item.title} onClick={() => setCompleted(current => checked ? current.filter(id => id !== item.id) : [...current, item.id])}>{checked ? <CheckSquare size={19} /> : <span className="empty-check" />}</button>
+            <div className="intention-icon"><Icon size={18} /></div>
+            <div className="intention-copy"><strong>{item.title}</strong><small>{item.detail}</small></div>
+            <button className="intention-open" type="button" onClick={() => setPage(item.page)}>Open <ChevronRight size={15} /></button>
+          </div>;
+        })}
+      </div>
+      <p className="intent-note">Personal checklist saved on this browser only. It does not change group data or award XP.</p>
+    </section>
+  );
 }
 function Stat({ icon: Icon, label, value, tone }) { return <div className="stat-card"><div className={`stat-icon ${tone}`}><Icon size={19} /></div><div><small>{label}</small><strong>{value}</strong></div></div> }
 function Empty({ text }) { return <div className="empty-state"><div className="empty-icon"><MessageCircle size={22} /></div><p>{text}</p></div> }
