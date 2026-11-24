@@ -2022,3 +2022,101 @@ html[data-theme="light"] .notice { color: #4c62bb; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+
+/* Daily intention checklist — browser-local and independent of group records */
+.daily-intentions { margin: 0 0 20px; padding: 21px 23px; }
+.daily-intentions-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.daily-intentions-head h3 { margin: 0 0 5px; color: #f1f5ff; font: 600 17px 'Space Grotesk'; }
+.daily-intentions-head .eyebrow { margin-bottom: 7px; }
+.intent-progress { display: grid; justify-items: end; gap: 2px; }
+.intent-progress strong { font: 700 22px 'Space Grotesk'; color: #a9c4ff; }
+.intent-progress small, .intent-note { color: #8fa0ba; font-size: 10px; }
+.intent-progress-track { height: 7px; overflow: hidden; border-radius: 30px; background: rgba(115,139,184,.16); margin: 17px 0 7px; }
+.intent-progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #4d91f7, #8b75f1); transition: width .25s ease; }
+.intentions-list { display: grid; }
+.intention-row { display: flex; align-items: center; gap: 12px; padding: 12px 3px; border-bottom: 1px solid rgba(129,154,201,.13); }
+.intention-row:last-child { border-bottom: 0; }
+.intention-check { width: 25px; height: 25px; display: grid; place-items: center; border: 0; padding: 0; background: transparent; color: #82aaff; flex: none; }
+.empty-check { width: 17px; height: 17px; border: 1.5px solid #7285a7; border-radius: 6px; }
+.intention-icon { width: 34px; height: 34px; display: grid; place-items: center; color: #9ab8ff; background: rgba(90,129,220,.14); border-radius: 10px; flex: none; }
+.intention-copy { flex: 1; min-width: 0; }
+.intention-copy strong, .intention-copy small { display: block; }
+.intention-copy strong { font-size: 12px; color: #eaf0fc; }
+.intention-copy small { color: #91a1bb; font-size: 10px; margin-top: 4px; }
+.intention-row.done .intention-copy strong { color: #9aabc2; text-decoration: line-through; }
+.intention-row.done .intention-icon { color: #67d5a5; background: rgba(75,211,154,.12); }
+.intention-open { display: inline-flex; align-items: center; gap: 3px; border: 0; background: transparent; color: #a9c4ff; padding: 7px 4px; font-size: 11px; font-weight: 700; }
+.intention-open:hover { color: #fff; }
+.intent-note { margin: 10px 0 0; }
+.login-screen { position: relative; }
+.login-theme-control { position: absolute; z-index: 4; top: 20px; right: 23px; }
+.mobile-bottom-nav { display: none; }
+
+html[data-theme="light"] .daily-intentions-head h3 { color: #20314d; }
+html[data-theme="light"] .intent-progress strong { color: #456dcc; }
+html[data-theme="light"] .intent-progress small,
+html[data-theme="light"] .intent-note { color: #71809a; }
+html[data-theme="light"] .intent-progress-track { background: #e9eef7; }
+html[data-theme="light"] .intention-row { border-bottom-color: #edf0f6; }
+html[data-theme="light"] .empty-check { border-color: #a8b5c8; }
+html[data-theme="light"] .intention-icon { color: #5876c8; background: #eef2ff; }
+html[data-theme="light"] .intention-copy strong { color: #273953; }
+html[data-theme="light"] .intention-copy small { color: #71809a; }
+html[data-theme="light"] .intention-row.done .intention-copy strong { color: #8290a5; }
+html[data-theme="light"] .intention-row.done .intention-icon { color: #21966b; background: #e7f8f0; }
+html[data-theme="light"] .intention-open { color: #456dcc; }
+html[data-theme="light"] .intention-open:hover { color: #284b9b; }
+
+@media (max-width: 720px) {
+  .main-area { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .mobile-bottom-nav {
+    position: fixed;
+    z-index: 18;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
+    left: 10px;
+    right: 10px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    min-height: 58px;
+    padding: 6px;
+    border: 1px solid rgba(130,154,200,.2);
+    border-radius: 17px;
+    background: rgba(15,24,42,.92);
+    box-shadow: 0 12px 35px rgba(0,0,0,.28);
+    backdrop-filter: blur(18px);
+  }
+  .mobile-bottom-nav button {
+    min-width: 0;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: #91a1ba;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 4px 2px;
+  }
+  .mobile-bottom-nav button.active {
+    color: #fff;
+    background: linear-gradient(145deg, rgba(71,127,235,.32), rgba(119,91,228,.23));
+  }
+  html[data-theme="light"] .mobile-bottom-nav {
+    background: rgba(255,255,255,.94);
+    border-color: #dce5f1;
+    box-shadow: 0 10px 32px rgba(39,57,88,.12);
+  }
+  html[data-theme="light"] .mobile-bottom-nav button { color: #75839a; }
+  html[data-theme="light"] .mobile-bottom-nav button.active { color: #3f66c2; background: #edf2ff; }
+  .daily-intentions { padding: 17px 15px; }
+  .intention-row { gap: 8px; }
+  .intention-icon { width: 31px; height: 31px; }
+  .intention-copy strong { font-size: 11px; }
+  .intention-open { font-size: 10px; }
+  .login-theme-control { top: 12px; right: 12px; }
+}
