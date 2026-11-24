@@ -23,8 +23,6 @@ function PageTitle({ eyebrow, title, description }) {
 export default function ProgressHub({ profile }) {
   const [data, setData] = useState(null);
   const [weekly, setWeekly] = useState([]);
-  const [catalogue, setCatalogue] = useState([]);
-  const [unlocked, setUnlocked] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -32,11 +30,9 @@ export default function ProgressHub({ profile }) {
     let active = true;
     async function load() {
       setLoading(true);
-      const [dashboardResult, leaderboardResult, catalogueResult, unlockedResult] = await Promise.all([
+      const [dashboardResult, leaderboardResult] = await Promise.all([
         supabase.rpc("get_gamification_dashboard"),
         supabase.rpc("get_weekly_leaderboard"),
-        supabase.from("achievements").select("id,title,description,icon,rule_key,threshold").order("threshold", { ascending: true }),
-        supabase.from("user_achievements").select("achievement_id,unlocked_at").eq("user_id", profile.id),
       ]);
       if (!active) return;
       if (dashboardResult.error) {
@@ -44,15 +40,13 @@ export default function ProgressHub({ profile }) {
         setLoading(false);
         return;
       }
-      if (leaderboardResult.error || catalogueResult.error || unlockedResult.error) {
-        setError("Some progress information could not be loaded. Please try again.");
+      if (leaderboardResult.error) {
+        setError("The group leaderboard could not be loaded. Please try again.");
         setLoading(false);
         return;
       }
       setData(dashboardResult.data);
       setWeekly(leaderboardResult.data || []);
-      setCatalogue(catalogueResult.data || []);
-      setUnlocked(unlockedResult.data || []);
       setError("");
       setLoading(false);
     }
@@ -60,7 +54,9 @@ export default function ProgressHub({ profile }) {
     return () => { active = false; };
   }, [profile.id]);
 
-  const unlockedIds = new Set(unlocked.map(item => item.achievement_id));
+  const catalogue = data?.achievements || [];
+  const unlocked = catalogue.filter(item => item.unlocked);
+  const unlockedIds = new Set(unlocked.map(item => item.id));
   const rank = weekly.findIndex(item => item.user_id === profile.id) + 1;
   const progress = data ? Math.min(100, (data.level_xp / 500) * 100) : 0;
 
