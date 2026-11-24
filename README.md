@@ -118,9 +118,11 @@ For stronger production privacy, use a managed Jitsi provider or self-host Jitsi
 
 ## Progress & Rewards upgrade
 
-The redesign branch includes an optional gamification layer. It is deliberately split into frontend code and an additive Supabase migration.
+The redesign branch includes a gamification layer backed by an additive Supabase migration.
 
-**The migration is not run by deployment.** Review `supabase/migrations/20261124_gamification.sql` and apply it in Supabase SQL Editor only after the project owner approves the database change.
+**Applied to the WORRIOR-2027 Supabase project:** `supabase/migrations/20261124_gamification.sql` is recorded in the Supabase migration history as `20261124104301`. It is not run automatically by a frontend deployment. For a separate Supabase environment, review and apply this migration once before enabling Progress & Rewards.
+
+The live project was verified after applying it: all four new tables exist with RLS enabled, the seven authenticated RPC functions are present, and the original profiles/content counts remain unchanged.
 
 When enabled:
 - Completed 25, 45, and 60-minute focus sessions award 2 XP per verified minute.
