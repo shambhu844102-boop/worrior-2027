@@ -7,6 +7,8 @@ import {
 import { supabase, supabaseReady } from "./supabase";
 import StudyTimer from "./StudyTimer";
 import NotificationBell from "./components/NotificationBell";
+import ThemeToggle from "./components/ThemeToggle";
+import { getInitialTheme, saveTheme } from "./theme";
 
 const nav = [
   ["Overview", Home], ["Messages", MessageCircle], ["Live room", Video],
@@ -30,6 +32,12 @@ export default function App() {
   const [notice, setNotice] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [theme, setTheme] = useState(getInitialTheme);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    saveTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     if (!supabaseReady) { setLoading(false); return; }
@@ -86,6 +94,7 @@ export default function App() {
         <button className="icon-btn mobile-menu" onClick={() => setMobileNav(true)}><Menu /></button>
         <div className="crumb">WORRIOR 2027 <ChevronRight size={14} /> <b>{page}</b></div>
         <div className="top-actions">
+          <ThemeToggle theme={theme} onToggle={() => setTheme(current => current === "dark" ? "light" : "dark")} />
           <NotificationBell user={session.user} />
 
           <span className="secure-label">
