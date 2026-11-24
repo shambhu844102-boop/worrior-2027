@@ -141,6 +141,9 @@ declare
   v_streak integer;
   v_longest integer;
   v_total_xp integer;
+  v_badge record;
+  v_new_badges jsonb := '[]'::jsonb;
+  v_session_count integer;
 begin
   if v_user is null then raise exception 'Authentication required'; end if;
 
@@ -193,12 +196,35 @@ begin
     into v_total_xp, v_streak, v_longest
     from public.user_gamification where user_id = v_user;
 
+  select count(*) into v_session_count from public.study_sessions
+   where user_id = v_user and status = 'completed';
+
+  for v_badge in
+    select a.id, a.title
+      from public.achievements a
+     where not exists (
+       select 1 from public.user_achievements ua
+        where ua.user_id = v_user and ua.achievement_id = a.id
+     )
+       and (
+         (a.rule_key = 'sessions' and v_session_count >= a.threshold) or
+         (a.rule_key = 'focus_minutes' and (select total_focus_minutes from public.user_gamification where user_id = v_user) >= a.threshold) or
+         (a.rule_key = 'streak' and v_streak >= a.threshold) or
+         (a.rule_key = 'total_xp' and v_total_xp >= a.threshold)
+       )
+  loop
+    insert into public.user_achievements(user_id, achievement_id)
+    values (v_user, v_badge.id) on conflict do nothing;
+    v_new_badges := v_new_badges || jsonb_build_array(v_badge.title);
+  end loop;
+
   return jsonb_build_object(
     'xp_earned', v_xp,
     'total_xp', v_total_xp,
     'current_streak', v_streak,
     'longest_streak', v_longest,
-    'level', floor(v_total_xp / 500.0)::integer + 1
+    'level', floor(v_total_xp / 500.0)::integer + 1,
+    'new_achievements', v_new_badges
   );
 end;
 $$;
