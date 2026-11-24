@@ -6,6 +6,7 @@ import {
   markAllAsRead,
   subscribeNotifications,
 } from "../services/notificationService";
+import { enablePush } from "../services/pushService";
 
 export default function NotificationBell({ user }) {
   const [items, setItems] = useState([]);
@@ -13,6 +14,7 @@ export default function NotificationBell({ user }) {
   const [loading, setLoading] = useState(true);
   const [connection, setConnection] = useState("connecting");
   const [statusMessage, setStatusMessage] = useState("");
+  const [pushStatus, setPushStatus] = useState("checking");
 
   useEffect(() => {
     if (!user?.id) {
@@ -24,7 +26,7 @@ export default function NotificationBell({ user }) {
 
     let active = true;
 
-    const upsertNotification = (notification) => {
+    const upsertNotification = notification => {
       if (!notification?.id) return;
       setItems(previous => {
         const next = [
@@ -78,7 +80,62 @@ export default function NotificationBell({ user }) {
     };
   }, [user?.id]);
 
+  useEffect(() => {
+    let active = true;
+
+    async function checkPushSubscription() {
+      if (
+        !("serviceWorker" in navigator) ||
+        !("PushManager" in window) ||
+        !("Notification" in window)
+      ) {
+        if (active) setPushStatus("unsupported");
+        return;
+      }
+
+      if (Notification.permission === "denied") {
+        if (active) setPushStatus("blocked");
+        return;
+      }
+
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        const subscription = await registration?.pushManager.getSubscription();
+        if (active) setPushStatus(subscription ? "enabled" : "ready");
+      } catch (error) {
+        console.error("Push subscription check failed:", error);
+        if (active) setPushStatus("ready");
+      }
+    }
+
+    checkPushSubscription();
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
   const unread = items.filter(item => !item.is_read).length;
+
+  async function activatePhoneAlerts() {
+    if (!user?.id || pushStatus === "enabling") return;
+
+    setPushStatus("enabling");
+    setStatusMessage("");
+    try {
+      await enablePush(user.id);
+      setPushStatus("enabled");
+      setStatusMessage("Phone alerts are enabled on this device.");
+    } catch (error) {
+      console.error("Enable phone notifications failed:", error);
+      if (typeof Notification !== "undefined" && Notification.permission === "denied") {
+        setPushStatus("blocked");
+        setStatusMessage("Notifications are blocked for this site. Change the site permission in your browser settings.");
+      } else {
+        setPushStatus("error");
+        setStatusMessage(error?.message || "Phone alerts could not be enabled. Please try again.");
+      }
+    }
+  }
 
   async function readOne(item) {
     try {
@@ -162,6 +219,38 @@ export default function NotificationBell({ user }) {
               </button>
             </div>
           </div>
+
+          {pushStatus === "ready" && (
+            <div className="notification-push-prompt">
+              <div>
+                <strong>Phone alerts</strong>
+                <small>Get updates even when the website is closed.</small>
+              </div>
+              <button type="button" onClick={activatePhoneAlerts}>
+                Enable
+              </button>
+            </div>
+          )}
+          {pushStatus === "enabling" && (
+            <p className="notification-push-message" role="status">
+              Enabling phone alerts…
+            </p>
+          )}
+          {pushStatus === "enabled" && (
+            <p className="notification-push-message success" role="status">
+              Phone alerts enabled on this device.
+            </p>
+          )}
+          {pushStatus === "blocked" && (
+            <p className="notification-push-message" role="status">
+              Notifications are blocked for this site. Change the site permission in your browser settings.
+            </p>
+          )}
+          {pushStatus === "unsupported" && (
+            <p className="notification-push-message" role="status">
+              This browser does not support web push notifications here.
+            </p>
+          )}
 
           {statusMessage && (
             <p className="notification-status-message" role="status">
