@@ -176,11 +176,11 @@ export default function StudyTimer({ profile }) {
   }
 
   async function resetTimer() {
+    setRunning(false);
     if (sessionId) {
       const { error } = await supabase.rpc("abandon_study_session", { p_session_id: sessionId });
       if (error) setStatus("Timer reset locally. The server session may need cleanup: " + error.message);
     }
-    setRunning(false);
     stopAlarm();
     setRemaining(minutes * 60);
     endTime.current = null;
