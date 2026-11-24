@@ -220,14 +220,14 @@ export default function NotificationBell({ user }) {
             </div>
           </div>
 
-          {pushStatus === "ready" && (
+          {(pushStatus === "ready" || pushStatus === "error") && (
             <div className="notification-push-prompt">
               <div>
                 <strong>Phone alerts</strong>
                 <small>Get updates even when the website is closed.</small>
               </div>
               <button type="button" onClick={activatePhoneAlerts}>
-                Enable
+                {pushStatus === "error" ? "Retry" : "Enable"}
               </button>
             </div>
           )}
