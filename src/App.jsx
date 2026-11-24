@@ -2,18 +2,19 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Activity, BookOpen, CalendarDays, CheckSquare, ChevronRight, Clock, FileText,
   FolderOpen, Home, LogOut, Menu, MessageCircle, Plus, Send, Settings,
-  ShieldCheck, Users, Video, X, Paperclip, Download, Search, Hash, LockKeyhole, Pencil, Trash2,Megaphone,
+  ShieldCheck, Users, Video, X, Paperclip, Download, Search, Hash, LockKeyhole, Pencil, Trash2,Megaphone, Trophy, Flame, Zap, Award,
 } from "lucide-react";
 import { supabase, supabaseReady } from "./supabase";
 import StudyTimer from "./StudyTimer";
 import NotificationBell from "./components/NotificationBell";
 import ThemeToggle from "./components/ThemeToggle";
 import { getInitialTheme, saveTheme } from "./theme";
+import ProgressHub from "./ProgressHub";
 
 const nav = [
   ["Overview", Home], ["Messages", MessageCircle], ["Live room", Video],
   ["Study materials", FolderOpen], ["Assignments", CheckSquare],
-  ["Study Timer", Clock], ["Members", Users], ["Schedule", CalendarDays],["Announcements", Megaphone],
+  ["Study Timer", Clock], ["Members", Users], ["Schedule", CalendarDays],["Announcements", Megaphone], ["Progress & Rewards", Trophy],
 ];
 
 const mobileNavItems = [
@@ -118,7 +119,8 @@ export default function App() {
         {page === "Live room" && <LiveRoom profile={profile} />}
         {page === "Study materials" && <Materials profile={profile} />}
         {page === "Assignments" && <Assignments profile={profile} />}
-        {page === "Study Timer" && <StudyTimer />}
+        {page === "Study Timer" && <StudyTimer profile={profile} />}
+        {page === "Progress & Rewards" && <ProgressHub profile={profile} />}
         {page === "Members" && <Members profile={profile} />}
         {page === "Schedule" && <Schedule profile={profile} />}
         {page === "Settings" && <AdminPanel profile={profile} />}
@@ -148,6 +150,7 @@ function PageHeading({ eyebrow, title, description, action }) {
 function Overview({ profile, setPage }) {
   const [stats, setStats] = useState({ members: 0, messages: 0, files: 0, tasks: 0 });
   const [recent, setRecent] = useState([]);
+  const [gamification, setGamification] = useState(null);
   const todayLabel = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "short", day: "numeric" }).format(new Date()).toUpperCase();
   useEffect(() => {
     let live = true; (async () => {
@@ -158,6 +161,8 @@ function Overview({ profile, setPage }) {
         supabase.from("assignments").select("id", { count: "exact", head: true })
       ]); if (live) setStats({ members: m.count || 0, messages: c.count || 0, files: f.count || 0, tasks: t.count || 0 });
       const { data } = await supabase.from("messages").select("id,content,created_at,profiles(full_name)").order("created_at", { ascending: false }).limit(4); if (live) setRecent(data || []);
+      const { data: progressData, error: progressError } = await supabase.rpc("get_gamification_dashboard");
+      if (live && !progressError) setGamification(progressData);
     })(); return () => { live = false }
   }, []);
   return <><PageHeading eyebrow={`${todayLabel} · YOUR STUDY SPACE`} title={`Good to see you, ${profile.full_name.split(" ")[0]}.`} description="Your team's learning hub. Make today count." action={<button className="btn primary" onClick={() => setPage("Live room")}><Video size={17} /> Join live room</button>} />
@@ -203,9 +208,33 @@ function Overview({ profile, setPage }) {
     </div>
 
     <DailyIntentions profile={profile} setPage={setPage} />
+    <ProgressSnapshot data={gamification} setPage={setPage} />
     <div className="content-grid"><section className="panel"><div className="panel-head"><div><h3>Recent conversations</h3><p className="muted">Latest updates from your group</p></div><button className="text-btn" onClick={() => setPage("Messages")}>View chat <ChevronRight size={14} /></button></div>{recent.length ? recent.map(x => <div className="recent-row" key={x.id}><div className="avatar">{initials(x.profiles?.full_name)}</div><div className="recent-copy"><b>{x.profiles?.full_name || "Member"}</b><p>{x.content}</p></div><small>{prettyDate(x.created_at)}</small></div>) : <Empty text="No messages yet. Start the conversation with your team." />}</section><section className="panel quick-panel"><div className="panel-head"><div><h3>Quick access</h3><p className="muted">Jump back into your work</p></div></div>{[["Messages", MessageCircle, "Discuss a topic"], ["Study materials", FolderOpen, "Find shared notes"], ["Assignments", CheckSquare, "Check group tasks"], ["Members", Users, "Meet your teammates"]].map(([n, I, d]) => <button className="quick-link" key={n} onClick={() => setPage(n)}><span className="quick-icon"><I size={18} /></span><span><b>{n}</b><small>{d}</small></span><ChevronRight size={16} /></button>)}</section></div>
   </>;
 }
+function ProgressSnapshot({ data, setPage }) {
+  return (
+    <section className="progress-snapshot panel">
+      <div className="progress-snapshot-head">
+        <div><p className="eyebrow">YOUR GROWTH</p><h3>Every session moves you forward.</h3><p className="muted">Verified focus time, real XP and a streak you can build day by day.</p></div>
+        <button className="text-btn" type="button" onClick={() => setPage("Progress & Rewards")}>View progress <ChevronRight size={15} /></button>
+      </div>
+      {data ? (
+        <>
+          <div className="snapshot-stats">
+            <div><Zap size={18}/><strong>{data.total_xp.toLocaleString()} XP</strong><small>Total points</small></div>
+            <div><Flame size={18}/><strong>{data.current_streak} days</strong><small>Current streak</small></div>
+            <div><Award size={18}/><strong>Level {data.level}</strong><small>Current level</small></div>
+          </div>
+          <div className="snapshot-level"><div><span>Level progress</span><b>{data.level_xp} / 500 XP</b></div><div className="snapshot-track"><span style={{ width: Math.min(100, data.level_xp / 5) + "%" }} /></div></div>
+        </>
+      ) : (
+        <div className="snapshot-waiting"><ShieldCheck size={20}/><span>Verified XP, streaks and badges unlock after the secure database setup is approved.</span></div>
+      )}
+    </section>
+  );
+}
+
 function DailyIntentions({ profile, setPage }) {
   const localNow = new Date();
   const today = [localNow.getFullYear(), String(localNow.getMonth() + 1).padStart(2, "0"), String(localNow.getDate()).padStart(2, "0")].join("-");
