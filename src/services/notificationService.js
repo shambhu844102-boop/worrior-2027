@@ -2,6 +2,7 @@
 import { supabase } from "../supabase";
 
 // Get current user's notifications
+
 export async function getNotifications(userId) {
   const { data, error } = await supabase
     .from("notifications")
@@ -10,7 +11,18 @@ export async function getNotifications(userId) {
     .order("created_at", { ascending: false })
     .limit(50);
 
-  if (error) throw error;
+  if (error) {
+    console.error("SUPABASE NOTIFICATION ERROR", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
+
+    throw error;
+  }
+
+  console.log("Notifications loaded:", data);
   return data || [];
 }
 

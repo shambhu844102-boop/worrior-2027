@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Activity, BookOpen, CalendarDays, CheckSquare, ChevronRight, Clock, FileText,
   FolderOpen, Home, LogOut, Menu, MessageCircle, Plus, Send, Settings,
-  ShieldCheck, Users, Video, X, Paperclip, Download, Search, Hash, LockKeyhole, Pencil, Trash2,
+  ShieldCheck, Users, Video, X, Paperclip, Download, Search, Hash, LockKeyhole, Pencil, Trash2,Megaphone,
 } from "lucide-react";
 import { supabase, supabaseReady } from "./supabase";
 import StudyTimer from "./StudyTimer";
@@ -11,7 +11,7 @@ import NotificationBell from "./components/NotificationBell";
 const nav = [
   ["Overview", Home], ["Messages", MessageCircle], ["Live room", Video],
   ["Study materials", FolderOpen], ["Assignments", CheckSquare],
-  ["Study Timer", Clock], ["Members", Users], ["Schedule", CalendarDays]
+  ["Study Timer", Clock], ["Members", Users], ["Schedule", CalendarDays],["Announcements", Megaphone],
 ];
 
 function initials(s = "Student") {
@@ -100,6 +100,7 @@ export default function App() {
       <div className="page-wrap">
         {page === "Overview" && <Overview profile={profile} setPage={setPage} />}
         {page === "Messages" && <Messages profile={profile} />}
+        {page === "Announcements" && <AnnouncementPage profile={profile} />}
         {page === "Live room" && <LiveRoom profile={profile} />}
         {page === "Study materials" && <Materials profile={profile} />}
         {page === "Assignments" && <Assignments profile={profile} />}
@@ -1481,8 +1482,322 @@ function Schedule({ profile }) {
 }
 
 
+
 function AdminPanel({ profile }) {
-  const [name, setName] = useState(""), [email, setEmail] = useState(""), [password, setPassword] = useState(""), [message, setMessage] = useState("");
-  async function create(e) { e.preventDefault(); setMessage("Creating account…"); const { data: { session } } = await supabase.auth.getSession(); const { data, error } = await supabase.functions.invoke("admin-create-member", { body: { full_name: name, email, password }, headers: { Authorization: `Bearer ${session.access_token}` } }); setMessage(error ? error.message : (data?.message || "Member account created.")); if (!error) { setName(""); setEmail(""); setPassword(""); } }
-  return <><PageHeading eyebrow="WORKSPACE CONTROL" title="Settings & administration" description="Manage your private student group." /><div className="content-grid"><section className="panel form-panel"><div className="admin-heading"><ShieldCheck size={21} /><div><h3>Create member account</h3><p className="muted">Admin-only action. Up to six group members.</p></div></div>{profile.role === "admin" ? <form onSubmit={create}><label>Student full name</label><input required value={name} onChange={e => setName(e.target.value)} placeholder="Student name" /><label>Email address</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="student@example.com" /><label>Temporary password</label><input minLength="8" required value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 8 characters" /><button className="btn primary full"><Plus size={17} /> Create account</button><p className="muted tiny">Share temporary passwords privately. Members should change them after first login; password-reset flow can be added before public launch.</p>{message && <p className="notice">{message}</p>}</form> : <p className="muted">Only the group administrator can create member accounts.</p>}</section><section className="panel"><h3>Workspace information</h3><div className="info-line"><span>Workspace</span><b>WORRIOR 2027</b></div><div className="info-line"><span>Access</span><b>Invite-only</b></div><div className="info-line"><span>Maximum members</span><b>6 students</b></div><div className="info-line"><span>Video provider</span><b>Jitsi Meet</b></div></section></div></>;
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+
+  const [announcementTitle, setAnnouncementTitle] = useState("");
+  const [announcementBody, setAnnouncementBody] = useState("");
+  const [announcementStatus, setAnnouncementStatus] = useState("");
+  const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
+
+  async function create(e) {
+    e.preventDefault();
+    setMessage("Creating account…");
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    const { data, error } = await supabase.functions.invoke(
+      "admin-create-member",
+      {
+        body: { full_name: name, email, password },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      }
+    );
+
+    setMessage(
+      error
+        ? error.message
+        : (data?.message || "Member account created.")
+    );
+
+    if (!error) {
+      setName("");
+      setEmail("");
+      setPassword("");
+    }
+  }
+
+  async function sendAnnouncement(e) {
+    e.preventDefault();
+
+    if (!announcementTitle.trim() || !announcementBody.trim()) return;
+
+    setSendingAnnouncement(true);
+    setAnnouncementStatus("Sending announcement…");
+
+    const { data, error } = await supabase.rpc(
+      "send_group_announcement",
+      {
+        p_title: announcementTitle.trim(),
+        p_message: announcementBody.trim()
+      }
+    );
+
+    setSendingAnnouncement(false);
+
+    if (error) {
+      setAnnouncementStatus("Error: " + error.message);
+      return;
+    }
+
+    setAnnouncementStatus(
+      `Announcement sent successfully to ${data} members!`
+    );
+
+    setAnnouncementTitle("");
+    setAnnouncementBody("");
+  }
+
+  return (
+    <>
+      <PageHeading
+        eyebrow="WORKSPACE CONTROL"
+        title="Settings & administration"
+        description="Manage your private student group."
+      />
+
+      <div className="content-grid">
+
+        <section className="panel form-panel">
+          <div className="admin-heading">
+            <ShieldCheck size={21} />
+            <div>
+              <h3>Create member account</h3>
+              <p className="muted">
+                Admin-only action. Up to six group members.
+              </p>
+            </div>
+          </div>
+
+          {profile.role === "admin" ? (
+            <form onSubmit={create}>
+              <label>Student full name</label>
+              <input
+                required
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Student name"
+              />
+
+              <label>Email address</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="student@example.com"
+              />
+
+              <label>Temporary password</label>
+              <input
+                type="password"
+                minLength="8"
+                required
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="At least 8 characters"
+              />
+
+              <button className="btn primary full" type="submit">
+                <Plus size={17} /> Create account
+              </button>
+
+              <p className="muted tiny">
+                Share temporary passwords privately. Members should
+                change them after first login.
+              </p>
+
+              {message && <p className="notice">{message}</p>}
+            </form>
+          ) : (
+            <p className="muted">
+              Only the group administrator can create member accounts.
+            </p>
+          )}
+        </section>
+
+        <section className="panel form-panel">
+          <div className="admin-heading">
+            <Send size={21} />
+            <div>
+              <h3>Send group announcement</h3>
+              <p className="muted">
+                Notify all other members instantly.
+              </p>
+            </div>
+          </div>
+
+          {profile.role === "admin" ? (
+            <form onSubmit={sendAnnouncement}>
+              <label>Announcement title</label>
+              <input
+                required
+                maxLength={100}
+                value={announcementTitle}
+                onChange={e => setAnnouncementTitle(e.target.value)}
+                placeholder="e.g. Important study update"
+              />
+
+              <label>Announcement message</label>
+              <textarea
+                required
+                maxLength={2000}
+                rows={5}
+                value={announcementBody}
+                onChange={e => setAnnouncementBody(e.target.value)}
+                placeholder="Write your announcement here..."
+              />
+
+              <button
+                className="btn primary full"
+                type="submit"
+                disabled={sendingAnnouncement}
+              >
+                <Send size={17} />
+                {sendingAnnouncement ? "Sending..." : "Send announcement"}
+              </button>
+
+              {announcementStatus && (
+                <p className="notice">{announcementStatus}</p>
+              )}
+            </form>
+          ) : (
+            <p className="muted">
+              Only the group administrator can send announcements.
+            </p>
+          )}
+        </section>
+
+        <section className="panel">
+          <h3>Workspace information</h3>
+          <div className="info-line">
+            <span>Workspace</span>
+            <b>WORRIOR 2027</b>
+          </div>
+          <div className="info-line">
+            <span>Access</span>
+            <b>Invite-only</b>
+          </div>
+          <div className="info-line">
+            <span>Maximum members</span>
+            <b>6 students</b>
+          </div>
+          <div className="info-line">
+            <span>Video provider</span>
+            <b>Jitsi Meet</b>
+          </div>
+        </section>
+
+      </div>
+    </>
+  );
 }
+
+function AnnouncementPage({ profile }) {
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [status, setStatus] = useState("");
+  const [sending, setSending] = useState(false);
+
+  async function sendAnnouncement(e) {
+    e.preventDefault();
+
+    if (!title.trim() || !body.trim()) return;
+
+    setSending(true);
+    setStatus("Sending announcement...");
+
+    const { data, error } = await supabase.rpc(
+      "send_group_announcement",
+      {
+        p_title: title.trim(),
+        p_message: body.trim()
+      }
+    );
+
+    setSending(false);
+
+    if (error) {
+      setStatus("Error: " + error.message);
+      return;
+    }
+
+    setStatus(`Announcement sent successfully to ${data} members!`);
+    setTitle("");
+    setBody("");
+  }
+
+  return (
+    <>
+      <PageHeading
+        eyebrow="TEAM COMMUNICATION"
+        title="Announcements"
+        description="Share important updates with every member of WORRIOR 2027."
+      />
+
+      {profile.role === "admin" ? (
+        <div className="content-grid">
+          <section className="panel form-panel">
+            <div className="admin-heading">
+              <Megaphone size={22} />
+              <div>
+                <h3>Create announcement</h3>
+                <p className="muted">
+                  Your announcement will appear in members' notifications.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={sendAnnouncement}>
+              <label>Announcement title</label>
+              <input
+                required
+                maxLength={100}
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder="Enter announcement title"
+              />
+
+              <label>Announcement message</label>
+              <textarea
+                required
+                rows={6}
+                maxLength={2000}
+                value={body}
+                onChange={e => setBody(e.target.value)}
+                placeholder="Write your announcement..."
+              />
+
+              <button
+                className="btn primary full"
+                type="submit"
+                disabled={sending}
+              >
+                <Send size={17} />
+                {sending ? "Sending..." : "Send announcement"}
+              </button>
+
+              {status && <p className="notice">{status}</p>}
+            </form>
+          </section>
+        </div>
+      ) : (
+        <section className="panel">
+          <h3>Group announcements</h3>
+          <p className="muted">
+            Only the group administrator can publish announcements.
+            Check your notification bell for new updates.
+          </p>
+        </section>
+      )}
+    </>
+  );
+}
+
+

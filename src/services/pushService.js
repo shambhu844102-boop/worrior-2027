@@ -25,6 +25,12 @@ export async function enablePush(userId) {
     throw new Error("VAPID public key is missing.");
   }
 
+  if (Notification.permission === "denied") {
+    throw new Error(
+      "Notifications are blocked. Allow them in browser site settings first."
+    );
+  }
+
   const permission = await Notification.requestPermission();
 
   if (permission !== "granted") {
@@ -32,12 +38,16 @@ export async function enablePush(userId) {
   }
 
   const registration = await navigator.serviceWorker.register("/sw.js");
+  await navigator.serviceWorker.ready;
 
-  const subscription =
-    await registration.pushManager.subscribe({
+  let subscription = await registration.pushManager.getSubscription();
+
+  if (!subscription) {
+    subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: decodeKey(VAPID_PUBLIC_KEY)
     });
+  }
 
   const { error } = await supabase
     .from("push_subscriptions")
@@ -54,3 +64,4 @@ export async function enablePush(userId) {
 
   return true;
 }
+
