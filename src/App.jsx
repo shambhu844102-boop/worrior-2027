@@ -10,7 +10,6 @@ import NotificationBell from "./components/NotificationBell";
 import ThemeToggle from "./components/ThemeToggle";
 import { getInitialTheme, saveTheme } from "./theme";
 import ProgressHub from "./ProgressHub";
-import LiveRoom from "./LiveRoom";
 
 const nav = [
   ["Overview", Home], ["Messages", MessageCircle], ["Live room", Video],
@@ -135,6 +134,84 @@ export default function App() {
       </nav>
     </main>
   </div>;
+}
+
+function LiveRoom({ profile }) {
+  const meetLink = import.meta.env.VITE_GOOGLE_MEET_URL;
+
+  const openMeeting = () => {
+    if (!meetLink) {
+      alert("Google Meet link is not configured. Please add VITE_GOOGLE_MEET_URL in Vercel Environment Variables.");
+      return;
+    }
+
+    window.open(meetLink, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <>
+      <PageHeading
+        eyebrow="LIVE COLLABORATION"
+        title="Permanent Study Room"
+        description="One shared Google Meet room for all WORRIOR 2027 members."
+      />
+
+      <div className="live-warning">
+        <ShieldCheck size={18} />
+        <div>
+          <b>Private group reminder</b>
+          <p>
+            This is the shared study room. Only invite your group members
+            and trusted participants to this meeting.
+          </p>
+        </div>
+      </div>
+
+      <div className="live-controls panel">
+        <div>
+          <span className="live-indicator" />
+          <b>Permanent Study Room</b>
+          <p className="muted">
+            One shared Google Meet link for all group members.
+          </p>
+        </div>
+
+        <div className="live-actions">
+          <button
+            className="btn primary"
+            onClick={openMeeting}
+            disabled={!meetLink}
+          >
+            <Video size={17} />
+            Join Study Room
+          </button>
+        </div>
+      </div>
+
+      <div className="meeting-placeholder">
+        <div className="meeting-icon">
+          <Video size={34} />
+        </div>
+
+        <h2>Your study room is ready</h2>
+
+        <p>
+          Open the shared Google Meet room. All members can use
+          the same link to join the meeting.
+        </p>
+
+        <button className="btn primary" onClick={openMeeting} disabled={!meetLink}>
+          Join Google Meet
+          <ChevronRight size={17} />
+        </button>
+        {!meetLink && (
+          <p className="muted" role="status">
+            Google Meet link is not configured yet.
+          </p>
+        )}
+      </div>
+    </>
+  );
 }
 
 function SetupScreen() {
