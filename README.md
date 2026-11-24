@@ -114,3 +114,22 @@ For stronger production privacy, use a managed Jitsi provider or self-host Jitsi
 4. Subject-specific channels
 5. Shared whiteboard
 6. Push notifications
+
+
+## Progress & Rewards upgrade
+
+The redesign branch includes a gamification layer backed by an additive Supabase migration.
+
+**Applied to the WORRIOR-2027 Supabase project:** `supabase/migrations/20261124_gamification.sql` is recorded in the Supabase migration history as `20261124104301`. It is not run automatically by a frontend deployment. For a separate Supabase environment, review and apply this migration once before enabling Progress & Rewards.
+
+The live project was verified after applying it: all four new tables exist with RLS enabled, the seven authenticated RPC functions are present, and the original profiles/content counts remain unchanged.
+
+When enabled:
+- Completed 25, 45, and 60-minute focus sessions award 2 XP per verified minute.
+- Each level requires 500 XP.
+- A streak increments at most once per India-local calendar day and continues only on consecutive days.
+- Achievements unlock from completed sessions, focused minutes, XP, and streak thresholds.
+- Daily missions are derived from completed focus sessions and the member's own group-message activity.
+- The seven-day leaderboard ranks verified XP from the last seven India-local calendar dates.
+
+XP is calculated and awarded by Supabase RPC functions, not trusted from client-side timer state. Paused time is excluded and a session reset/abandon earns no XP. The migration adds only new gamification/session/achievement tables and functions; it does not insert, delete, or alter existing profile/auth records.

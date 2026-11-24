@@ -50,7 +50,7 @@ export async function markAllAsRead(userId) {
 // Listen for incoming notifications
 export function subscribeNotifications(userId, callback) {
   const channel = supabase
-    .channel(`notifications-${userId}`)
+    .channel(`notifications-${userId}`, { config: { private: true } })
     .on(
       "postgres_changes",
       {
