@@ -11,39 +11,40 @@ export default function NotificationBell({ user }) {
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    if (!user?.id) return;
+useEffect(() => {
+  if (!user?.id) {
+    console.error("Notification: User ID missing");
+    return;
+  }
 
-    let active = true;
+  let active = true;
 
-    getNotifications(user.id)
-      .then(data => {
-        if (active) setItems(data);
-      })
-      .catch(console.error);
+  console.log("Notification user ID:", user.id);
 
-    const unsubscribe = subscribeNotifications(
-      user.id,
-      notification => {
+  getNotifications(user.id)
+    .then(data => {
+      console.log("Fetched notifications:", data);
+      if (active) setItems(data);
+    })
+    .catch(error => {
+      console.error("Notification fetch failed:", error);
+    });
+
+  const unsubscribe = subscribeNotifications(
+    user.id,
+    notification => {
+      console.log("New notification received:", notification);
+      if (active) {
         setItems(previous => [notification, ...previous]);
-
-        if (
-          Notification.permission === "granted" &&
-          document.visibilityState === "hidden"
-        ) {
-          new Notification(notification.title, {
-            body: notification.body,
-            icon: "/favicon.ico",
-          });
-        }
       }
-    );
+    }
+  );
 
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [user?.id]);
+  return () => {
+    active = false;
+    unsubscribe();
+  };
+}, [user?.id]);
 
   const unread = items.filter(item => !item.is_read).length;
 
