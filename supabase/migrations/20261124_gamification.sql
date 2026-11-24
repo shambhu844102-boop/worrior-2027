@@ -372,6 +372,41 @@ as $$
    order by coalesce(g.total_xp, 0) desc, p.full_name asc;
 $$;
 
+
+create or replace function public.get_weekly_leaderboard()
+returns table (
+  user_id uuid,
+  full_name text,
+  weekly_xp integer,
+  weekly_focus_minutes integer,
+  current_streak integer
+)
+language sql
+stable
+security definer
+set search_path = public
+as $
+  with weekly as (
+    select ss.user_id,
+           coalesce(sum(ss.xp_awarded), 0)::integer as weekly_xp,
+           coalesce(sum(ss.duration_minutes), 0)::integer as weekly_focus_minutes
+      from public.study_sessions ss
+     where ss.status = 'completed'
+       and (ss.completed_at at time zone 'Asia/Kolkata')::date >= (now() at time zone 'Asia/Kolkata')::date - 6
+       and (ss.completed_at at time zone 'Asia/Kolkata')::date <= (now() at time zone 'Asia/Kolkata')::date
+     group by ss.user_id
+  )
+  select p.id,
+         p.full_name,
+         coalesce(w.weekly_xp, 0),
+         coalesce(w.weekly_focus_minutes, 0),
+         case when g.last_study_date >= (now() at time zone 'Asia/Kolkata')::date - 1 then coalesce(g.current_streak, 0) else 0 end
+    from public.profiles p
+    left join weekly w on w.user_id = p.id
+    left join public.user_gamification g on g.user_id = p.id
+   order by coalesce(w.weekly_xp, 0) desc, coalesce(w.weekly_focus_minutes, 0) desc, p.full_name asc;
+$;
+
 revoke all on function public.start_study_session(integer) from public, anon;
 revoke all on function public.pause_study_session(uuid) from public, anon;
 revoke all on function public.resume_study_session(uuid) from public, anon;
@@ -379,6 +414,7 @@ revoke all on function public.abandon_study_session(uuid) from public, anon;
 revoke all on function public.complete_study_session(uuid) from public, anon;
 revoke all on function public.get_gamification_leaderboard() from public, anon;
 revoke all on function public.get_gamification_dashboard() from public, anon;
+revoke all on function public.get_weekly_leaderboard() from public, anon;
 grant execute on function public.start_study_session(integer) to authenticated;
 grant execute on function public.pause_study_session(uuid) to authenticated;
 grant execute on function public.resume_study_session(uuid) to authenticated;
@@ -386,3 +422,4 @@ grant execute on function public.abandon_study_session(uuid) to authenticated;
 grant execute on function public.complete_study_session(uuid) to authenticated;
 grant execute on function public.get_gamification_leaderboard() to authenticated;
 grant execute on function public.get_gamification_dashboard() to authenticated;
+grant execute on function public.get_weekly_leaderboard() to authenticated;
