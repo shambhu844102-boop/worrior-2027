@@ -73,6 +73,11 @@ create index if not exists study_sessions_user_completed_idx
   on public.study_sessions (user_id, completed_at desc)
   where status = 'completed';
 
+-- A member can have only one live timer session at a time.
+create unique index if not exists one_running_study_session_per_user
+  on public.study_sessions (user_id)
+  where status = 'running';
+
 create index if not exists study_sessions_leaderboard_idx
   on public.user_gamification (total_xp desc, current_streak desc);
 
@@ -196,7 +201,28 @@ begin
    where id = p_session_id and user_id = v_user
    for update;
 
-  if not found or v_session.status <> 'running' then
+  if not found then
+    raise exception 'Study session was not found';
+  end if;
+
+  -- Safe retry: if the completion committed but the client missed the response,
+  -- return the already-awarded result instead of awarding XP a second time.
+  if v_session.status = 'completed' then
+    select total_xp, current_streak, longest_streak
+      into v_total_xp, v_streak, v_longest
+      from public.user_gamification where user_id = v_user;
+    return jsonb_build_object(
+      'xp_earned', v_session.xp_awarded,
+      'total_xp', coalesce(v_total_xp, 0),
+      'current_streak', coalesce(v_streak, 0),
+      'longest_streak', coalesce(v_longest, 0),
+      'level', floor(coalesce(v_total_xp, 0) / 500.0)::integer + 1,
+      'new_achievements', '[]'::jsonb,
+      'already_completed', true
+    );
+  end if;
+
+  if v_session.status <> 'running' then
     raise exception 'Study session is no longer active';
   end if;
   if v_session.paused_at is not null then
