@@ -296,7 +296,7 @@ language plpgsql
 stable
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_user uuid := auth.uid();
   v_today date := (now() at time zone 'Asia/Kolkata')::date;
@@ -365,7 +365,7 @@ begin
     )
   );
 end;
-$;
+$$;
 
 create or replace function public.get_gamification_leaderboard()
 returns table (
@@ -408,7 +408,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
   with weekly as (
     select ss.user_id,
            coalesce(sum(ss.xp_awarded), 0)::integer as weekly_xp,
@@ -429,7 +429,7 @@ as $
     left join public.user_gamification g on g.user_id = p.id
    where auth.uid() is not null
    order by coalesce(w.weekly_xp, 0) desc, coalesce(w.weekly_focus_minutes, 0) desc, p.full_name asc;
-$;
+$$;
 
 revoke all on function public.start_study_session(integer) from public, anon;
 revoke all on function public.pause_study_session(uuid) from public, anon;
