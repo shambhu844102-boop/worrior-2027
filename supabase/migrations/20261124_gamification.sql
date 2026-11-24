@@ -25,6 +25,50 @@ create table if not exists public.study_sessions (
   xp_awarded integer not null default 0 check (xp_awarded >= 0)
 );
 
+
+create table if not exists public.achievements (
+  id text primary key,
+  title text not null,
+  description text not null,
+  icon text not null default 'award',
+  rule_key text not null check (rule_key in ('sessions', 'focus_minutes', 'streak', 'total_xp')),
+  threshold integer not null check (threshold > 0)
+);
+
+create table if not exists public.user_achievements (
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  achievement_id text not null references public.achievements(id) on delete cascade,
+  unlocked_at timestamptz not null default now(),
+  primary key (user_id, achievement_id)
+);
+
+insert into public.achievements(id, title, description, icon, rule_key, threshold)
+values
+  ('first-focus', 'First Focus', 'Complete your first verified focus session.', 'target', 'sessions', 1),
+  ('five-sessions', 'Focus Builder', 'Complete five verified focus sessions.', 'flame', 'sessions', 5),
+  ('five-hours', 'Deep Work', 'Complete five hours of focused study.', 'clock', 'focus_minutes', 300),
+  ('three-day-streak', 'Three-Day Rhythm', 'Study on three consecutive days.', 'calendar-check', 'streak', 3),
+  ('week-streak', 'One-Week Warrior', 'Study on seven consecutive days.', 'calendar-days', 'streak', 7),
+  ('first-thousand', 'XP Trailblazer', 'Earn your first 1,000 XP.', 'zap', 'total_xp', 1000)
+on conflict (id) do nothing;
+
+alter table public.achievements enable row level security;
+alter table public.user_achievements enable row level security;
+
+drop policy if exists "Members can view achievement catalogue" on public.achievements;
+create policy "Members can view achievement catalogue"
+  on public.achievements for select to authenticated using (true);
+
+drop policy if exists "Members can view own unlocked achievements" on public.user_achievements;
+create policy "Members can view own unlocked achievements"
+  on public.user_achievements for select to authenticated using (auth.uid() = user_id);
+
+revoke all on public.achievements from anon, authenticated;
+grant select on public.achievements to authenticated;
+revoke all on public.user_achievements from anon, authenticated;
+grant select on public.user_achievements to authenticated;
+
+
 create index if not exists study_sessions_user_completed_idx
   on public.study_sessions (user_id, completed_at desc)
   where status = 'completed';
@@ -229,6 +273,78 @@ begin
 end;
 $$;
 
+
+create or replace function public.get_gamification_dashboard()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $
+declare
+  v_user uuid := auth.uid();
+  v_today date := (now() at time zone 'Asia/Kolkata')::date;
+  v_total_xp integer := 0;
+  v_minutes integer := 0;
+  v_streak integer := 0;
+  v_longest integer := 0;
+  v_sessions_today integer := 0;
+  v_minutes_today integer := 0;
+  v_messages_today integer := 0;
+  v_badges jsonb := '[]'::jsonb;
+begin
+  if v_user is null then raise exception 'Authentication required'; end if;
+
+  select coalesce(total_xp,0), coalesce(total_focus_minutes,0),
+         case when last_study_date >= v_today - 1 then coalesce(current_streak,0) else 0 end,
+         coalesce(longest_streak,0)
+    into v_total_xp, v_minutes, v_streak, v_longest
+    from public.user_gamification where user_id = v_user;
+  if not found then
+    v_total_xp := 0; v_minutes := 0; v_streak := 0; v_longest := 0;
+  end if;
+
+  select count(*), coalesce(sum(duration_minutes),0)
+    into v_sessions_today, v_minutes_today
+    from public.study_sessions
+   where user_id = v_user and status = 'completed'
+     and (completed_at at time zone 'Asia/Kolkata')::date = v_today;
+
+  select count(*) into v_messages_today
+    from public.messages
+   where user_id = v_user
+     and (created_at at time zone 'Asia/Kolkata')::date = v_today;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', a.id, 'title', a.title, 'description', a.description,
+      'icon', a.icon, 'unlocked_at', ua.unlocked_at
+    ) order by ua.unlocked_at desc), '[]'::jsonb)
+    into v_badges
+    from public.user_achievements ua
+    join public.achievements a on a.id = ua.achievement_id
+   where ua.user_id = v_user;
+
+  return jsonb_build_object(
+    'total_xp', v_total_xp,
+    'level', floor(v_total_xp / 500.0)::integer + 1,
+    'level_xp', mod(v_total_xp, 500),
+    'xp_to_next_level', 500 - mod(v_total_xp, 500),
+    'total_focus_minutes', v_minutes,
+    'current_streak', v_streak,
+    'longest_streak', v_longest,
+    'today_sessions', v_sessions_today,
+    'today_focus_minutes', v_minutes_today,
+    'today_messages', v_messages_today,
+    'achievements', v_badges,
+    'missions', jsonb_build_array(
+      jsonb_build_object('id','focus-one','title','Complete one focus session','detail','Finish any full focus timer','progress',least(v_sessions_today,1),'target',1,'complete',v_sessions_today >= 1),
+      jsonb_build_object('id','focus-45','title','Study for 45 focused minutes','detail','Accumulate 45 minutes in completed sessions','progress',least(v_minutes_today,45),'target',45,'complete',v_minutes_today >= 45),
+      jsonb_build_object('id','say-hello','title','Contribute to the group','detail','Send at least one group message','progress',least(v_messages_today,1),'target',1,'complete',v_messages_today >= 1)
+    )
+  );
+end;
+$;
+
 create or replace function public.get_gamification_leaderboard()
 returns table (
   user_id uuid,
@@ -247,7 +363,7 @@ as $$
   select p.id,
          p.full_name,
          coalesce(g.total_xp, 0),
-         coalesce(g.current_streak, 0),
+         case when g.last_study_date >= (now() at time zone 'Asia/Kolkata')::date - 1 then coalesce(g.current_streak, 0) else 0 end,
          coalesce(g.longest_streak, 0),
          coalesce(g.total_focus_minutes, 0),
          floor(coalesce(g.total_xp, 0) / 500.0)::integer + 1
@@ -262,9 +378,11 @@ revoke all on function public.resume_study_session(uuid) from public, anon;
 revoke all on function public.abandon_study_session(uuid) from public, anon;
 revoke all on function public.complete_study_session(uuid) from public, anon;
 revoke all on function public.get_gamification_leaderboard() from public, anon;
+revoke all on function public.get_gamification_dashboard() from public, anon;
 grant execute on function public.start_study_session(integer) to authenticated;
 grant execute on function public.pause_study_session(uuid) to authenticated;
 grant execute on function public.resume_study_session(uuid) to authenticated;
 grant execute on function public.abandon_study_session(uuid) to authenticated;
 grant execute on function public.complete_study_session(uuid) to authenticated;
 grant execute on function public.get_gamification_leaderboard() to authenticated;
+grant execute on function public.get_gamification_dashboard() to authenticated;
