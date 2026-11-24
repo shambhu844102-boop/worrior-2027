@@ -14,6 +14,7 @@ export default function StudyTimer({ profile }) {
   const [minutes, setMinutes] = useState(25);
   const [remaining, setRemaining] = useState(25 * 60);
   const [running, setRunning] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [pausedOnServer, setPausedOnServer] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [alarmType, setAlarmType] = useState("bell");
@@ -131,33 +132,38 @@ export default function StudyTimer({ profile }) {
   }, []);
 
   async function startTimer() {
-    if (remaining <= 0) return;
-    stopAlarm();
-    setCompletion(null);
-    setStatus("");
+    if (remaining <= 0 || starting || running) return;
+    setStarting(true);
+    try {
+      stopAlarm();
+      setCompletion(null);
+      setStatus("");
 
-    if (sessionId && pausedOnServer) {
-      const { data, error } = await supabase.rpc("resume_study_session", { p_session_id: sessionId });
-      if (error || data !== true) {
-        setStatus("Could not resume verified session: " + (error?.message || "Session is no longer paused."));
-        return;
-      }
-      setPausedOnServer(false);
-    } else if (!sessionId) {
-      const trackingReady = databaseReady === null ? await refreshDashboard() : databaseReady;
-      if (trackingReady) {
-        const { data, error } = await supabase.rpc("start_study_session", { p_duration_minutes: minutes });
-      if (error) {
-        setDatabaseReady(false);
-        setStatus("Verified XP tracking is not available yet. The timer can still be used.");
-      } else {
-        setSessionId(data);
+      if (sessionId && pausedOnServer) {
+        const { data, error } = await supabase.rpc("resume_study_session", { p_session_id: sessionId });
+        if (error || data !== true) {
+          setStatus("Could not resume verified session: " + (error?.message || "Session is no longer paused."));
+          return;
+        }
+        setPausedOnServer(false);
+      } else if (!sessionId) {
+        const trackingReady = databaseReady === null ? await refreshDashboard() : databaseReady;
+        if (trackingReady) {
+          const { data, error } = await supabase.rpc("start_study_session", { p_duration_minutes: minutes });
+          if (error) {
+            setDatabaseReady(false);
+            setStatus("Verified XP tracking is not available yet. The timer can still be used.");
+          } else {
+            setSessionId(data);
+          }
         }
       }
-    }
 
-    endTime.current = Date.now() + remaining * 1000;
-    setRunning(true);
+      endTime.current = Date.now() + remaining * 1000;
+      setRunning(true);
+    } finally {
+      setStarting(false);
+    }
   }
 
   async function pauseTimer() {
@@ -221,7 +227,7 @@ export default function StudyTimer({ profile }) {
         <section className="timer-card panel">
           <div className="timer-card-top">
             <span className="timer-status"><i className={running ? "live" : ""} />{alarming ? "Session complete" : running ? "Focus session running" : pausedOnServer ? "Session paused" : "Ready when you are"}</span>
-            <span className="timer-verified"><ShieldCheck size={14} /> Server verified XP</span>
+            <span className="timer-verified"><ShieldCheck size={14} /> {databaseReady === true ? "Server verified XP" : databaseReady === false ? "XP setup pending" : "Checking XP setup"}</span>
           </div>
           <div className="timer-dial" style={{ "--timer-progress": ((minutes * 60 - remaining) / (minutes * 60)) * 360 + "deg" }}>
             <div className="timer-dial-inner">
@@ -237,7 +243,7 @@ export default function StudyTimer({ profile }) {
           </div>
           <div className="timer-actions">
             {!running ? (
-              <button className="btn primary" type="button" disabled={remaining <= 0} onClick={startTimer}><Play size={17} /> {pausedOnServer ? "Resume focus" : "Start focus"}</button>
+              <button className="btn primary" type="button" disabled={remaining <= 0 || starting} onClick={startTimer}><Play size={17} /> {starting ? "Starting…" : pausedOnServer ? "Resume focus" : "Start focus"}</button>
             ) : (
               <button className="btn primary" type="button" onClick={pauseTimer}><Pause size={17} /> Pause</button>
             )}
@@ -247,7 +253,7 @@ export default function StudyTimer({ profile }) {
           {completion && <div className="xp-earned"><Sparkles size={18} /><div><strong>+{completion.xp_earned} XP earned!</strong><small>New total: {completion.total_xp} XP · Level {completion.level}</small></div></div>}
           {remaining === 0 && sessionId && <button className="btn primary" type="button" onClick={() => verifyCompletion(sessionId)}>Retry XP verification</button>}
           {alarming && <button className="stop-alarm" type="button" onClick={stopAlarm}><Bell size={15} /> Stop alarm</button>}
-          <p className="timer-footnote">XP is awarded only after the server verifies the full timer duration. A reset or abandoned session earns no points.</p>
+          <p className="timer-footnote">{databaseReady === true ? "XP is awarded only after the server verifies the full timer duration. A reset or abandoned session earns no points." : "The timer works now. Real XP, levels and streaks will activate after the secure database setup is approved and installed."}</p>
         </section>
 
         <aside className="focus-side">
