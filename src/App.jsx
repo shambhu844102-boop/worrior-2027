@@ -148,6 +148,7 @@ function PageHeading({ eyebrow, title, description, action }) {
 function Overview({ profile, setPage }) {
   const [stats, setStats] = useState({ members: 0, messages: 0, files: 0, tasks: 0 });
   const [recent, setRecent] = useState([]);
+  const todayLabel = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "short", day: "numeric" }).format(new Date()).toUpperCase();
   useEffect(() => {
     let live = true; (async () => {
       const [m, c, f, t] = await Promise.all([
@@ -159,7 +160,7 @@ function Overview({ profile, setPage }) {
       const { data } = await supabase.from("messages").select("id,content,created_at,profiles(full_name)").order("created_at", { ascending: false }).limit(4); if (live) setRecent(data || []);
     })(); return () => { live = false }
   }, []);
-  return <><PageHeading eyebrow="MONDAY · YOUR STUDY SPACE" title={`Good to see you, ${profile.full_name.split(" ")[0]}.`} description="Your team's learning hub. Make today count." action={<button className="btn primary" onClick={() => setPage("Live room")}><Video size={17} /> Join live room</button>} />
+  return <><PageHeading eyebrow={`${todayLabel} · YOUR STUDY SPACE`} title={`Good to see you, ${profile.full_name.split(" ")[0]}.`} description="Your team's learning hub. Make today count." action={<button className="btn primary" onClick={() => setPage("Live room")}><Video size={17} /> Join live room</button>} />
     <div className="welcome-banner"><div><p className="eyebrow">CLASS OF 2027</p><h2>Small group. Big ambitions.</h2><p>Six learners, one shared goal: consistent progress.</p><button className="banner-link" onClick={() => setPage("Messages")}>Open group chat <ChevronRight size={15} /></button></div><div className="banner-art"><div className="art-ring" /><BookOpen size={76} /><span>W</span></div></div>
     <div className="stat-grid"><Stat icon={Users} label="Group members" value={stats.members + "/6"} tone="violet" /><Stat icon={MessageCircle} label="Messages" value={stats.messages} tone="blue" /><Stat icon={FolderOpen} label="Shared files" value={stats.files} tone="orange" /><Stat icon={CheckSquare} label="Assignments" value={stats.tasks} tone="green" /></div>
 
@@ -206,7 +207,8 @@ function Overview({ profile, setPage }) {
   </>;
 }
 function DailyIntentions({ profile, setPage }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const localNow = new Date();
+  const today = [localNow.getFullYear(), String(localNow.getMonth() + 1).padStart(2, "0"), String(localNow.getDate()).padStart(2, "0")].join("-");
   const storageKey = "worrior-intentions-" + profile.id + "-" + today;
   const intentions = [
     { id: "focus", title: "Complete one focused study session", detail: "Start your focus timer", page: "Study Timer", icon: Clock },
