@@ -84,18 +84,9 @@ export default function StudyTimer({ profile }) {
     alarmInterval.current = window.setInterval(playTone, 1700);
   }
 
-  async function finishSession() {
-    setRunning(false);
-    setRemaining(0);
-    startAlarm();
-
-    if (!sessionId) {
-      setStatus("Timer completed. XP will be enabled after the secure progress database setup.");
-      return;
-    }
-
+  async function verifyCompletion(id) {
     const { data, error } = await supabase.rpc("complete_study_session", {
-      p_session_id: sessionId,
+      p_session_id: id,
     });
     if (error) {
       setStatus("Timer completed, but XP confirmation failed: " + error.message);
@@ -107,6 +98,18 @@ export default function StudyTimer({ profile }) {
     setPausedOnServer(false);
     setStatus("Focus session verified. XP added to your profile.");
     await refreshDashboard();
+  }
+
+  async function finishSession() {
+    setRunning(false);
+    setRemaining(0);
+    startAlarm();
+
+    if (!sessionId) {
+      setStatus("Timer completed. XP will be enabled after the secure progress database setup.");
+      return;
+    }
+    await verifyCompletion(sessionId);
   }
 
   useEffect(() => {
@@ -134,19 +137,22 @@ export default function StudyTimer({ profile }) {
     setStatus("");
 
     if (sessionId && pausedOnServer) {
-      const { error } = await supabase.rpc("resume_study_session", { p_session_id: sessionId });
-      if (error) {
-        setStatus("Could not resume verified session: " + error.message);
+      const { data, error } = await supabase.rpc("resume_study_session", { p_session_id: sessionId });
+      if (error || data !== true) {
+        setStatus("Could not resume verified session: " + (error?.message || "Session is no longer paused."));
         return;
       }
       setPausedOnServer(false);
-    } else if (!sessionId && databaseReady) {
-      const { data, error } = await supabase.rpc("start_study_session", { p_duration_minutes: minutes });
+    } else if (!sessionId) {
+      const trackingReady = databaseReady === null ? await refreshDashboard() : databaseReady;
+      if (trackingReady) {
+        const { data, error } = await supabase.rpc("start_study_session", { p_duration_minutes: minutes });
       if (error) {
         setDatabaseReady(false);
         setStatus("Verified XP tracking is not available yet. The timer can still be used.");
       } else {
         setSessionId(data);
+        }
       }
     }
 
@@ -156,9 +162,9 @@ export default function StudyTimer({ profile }) {
 
   async function pauseTimer() {
     if (sessionId) {
-      const { error } = await supabase.rpc("pause_study_session", { p_session_id: sessionId });
-      if (error) {
-        setStatus("Could not pause the verified session: " + error.message);
+      const { data, error } = await supabase.rpc("pause_study_session", { p_session_id: sessionId });
+      if (error || data !== true) {
+        setStatus("Could not pause the verified session: " + (error?.message || "Session is no longer active."));
         return;
       }
       setPausedOnServer(true);
@@ -239,6 +245,7 @@ export default function StudyTimer({ profile }) {
           </div>
           {status && <p className="timer-status-message" role="status">{status}</p>}
           {completion && <div className="xp-earned"><Sparkles size={18} /><div><strong>+{completion.xp_earned} XP earned!</strong><small>New total: {completion.total_xp} XP · Level {completion.level}</small></div></div>}
+          {remaining === 0 && sessionId && <button className="btn primary" type="button" onClick={() => verifyCompletion(sessionId)}>Retry XP verification</button>}
           {alarming && <button className="stop-alarm" type="button" onClick={stopAlarm}><Bell size={15} /> Stop alarm</button>}
           <p className="timer-footnote">XP is awarded only after the server verifies the full timer duration. A reset or abandoned session earns no points.</p>
         </section>
