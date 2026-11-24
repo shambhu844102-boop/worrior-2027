@@ -317,7 +317,7 @@ function Messages({ profile }) {
     load();
 
     const channel = supabase
-      .channel("group-messages")
+      .channel("group-messages", { config: { private: true } })
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "messages" },
